@@ -1,0 +1,130 @@
+'strfile = "d:\x\CR\CAMPAIGN REPORT RUN BY @ " & str & ".xls"
+
+const Excel2007 = 12
+dim str
+
+Set objExcel=CreateObject("Excel.Application")
+Set objWorkbook=objExcel.Workbooks.Open("d:\x\MAC FROM Feb 1 TO Feb 9.xls")
+
+Set objSheet1=objWorkbook.workSheets("By Customer")
+
+objExcel.Visible=True
+objExcel.DisplayAlerts = False
+
+Set objRange=objSheet1.Range("A1")
+objRange.MergeCells=Flase
+
+Set objRange=objSheet1.Range("A2")
+objRange.EntireRow.Insert 
+objRange.EntireRow.Insert 
+
+Set objSheet2=objWorkbook.workSheets("TSU by Customer - TV")
+
+objExcel.Visible=True
+
+Set objRange=objSheet2.Range("A1")
+objRange.MergeCells=Flase
+
+Set objRange=objSheet2.Range("A2")
+objRange.EntireRow.Insert 
+objRange.EntireRow.Insert 
+
+
+Set objSheet3=objWorkbook.workSheets("TSU by Customer - INT")
+
+objExcel.Visible=True
+
+Set objRange=objSheet3.Range("A1")
+objRange.MergeCells=Flase
+
+Set objRange=objSheet3.Range("A2")
+objRange.EntireRow.Insert 
+objRange.EntireRow.Insert 
+
+
+
+Set objSheet4=objWorkbook.workSheets("TSU by Customer - RHP")
+
+objExcel.Visible=True
+
+Set objRange=objSheet4.Range("A1")
+objRange.MergeCells=Flase
+
+Set objRange=objSheet4.Range("A2")
+objRange.EntireRow.Insert 
+objRange.EntireRow.Insert 
+
+
+Set objSheet5=objWorkbook.workSheets("TSU by Customer - SHM")
+
+objExcel.Visible=True
+
+Set objRange=objSheet5.Range("A1")
+objRange.MergeCells=Flase
+
+Set objRange=objSheet5.Range("A2")
+objRange.EntireRow.Insert 
+objRange.EntireRow.Insert 
+
+
+
+
+Set objSheet6=objWorkbook.workSheets("By Product")
+
+objExcel.Visible=True
+
+Set objRange=objSheet6.Range("A1")
+objRange.MergeCells=Flase
+
+Set objRange=objSheet6.Range("A2")
+objRange.EntireRow.Insert 
+objRange.EntireRow.Insert 
+
+
+Set LastRow = objSheet1.usedrange.rows
+LastRow.NumberFormat = "_(* #,##0_);_(* (#,##0);_(* ""-""_);_(@_)"
+Set fiverow1=objSheet1.Range("5:5")
+fiverow1.NumberFormat = "General"
+
+Set LastRow = objSheet2.usedrange.rows
+LastRow.NumberFormat = "_(* #,##0_);_(* (#,##0);_(* ""-""_);_(@_)"
+Set fiverow1=objSheet2.Range("5:5")
+fiverow1.NumberFormat = "General"
+
+Set LastRow = objSheet3.usedrange.rows
+LastRow.NumberFormat = "_(* #,##0_);_(* (#,##0);_(* ""-""_);_(@_)"
+Set fiverow1=objSheet3.Range("5:5")
+fiverow1.NumberFormat = "General"
+
+Set LastRow = objSheet4.usedrange.rows
+LastRow.NumberFormat = "_(* #,##0_);_(* (#,##0);_(* ""-""_);_(@_)"
+Set fiverow1=objSheet4.Range("5:5")
+fiverow1.NumberFormat = "General"
+
+
+Set LastRow = objSheet5.usedrange.rows
+LastRow.NumberFormat = "_(* #,##0_);_(* (#,##0);_(* ""-""_);_(@_)"
+Set fiverow1=objSheet5.Range("5:5")
+fiverow1.NumberFormat = "General"
+Str = mid(objExcel.Cells(1,1).Value,42)
+
+
+Set LastRow = objSheet6.usedrange.rows
+LastRow.NumberFormat = "_(* #,##0_);_(* (#,##0);_(* ""-""_);_(@_)"
+Set fiverow2=objSheet6.Range("5:5")
+fiverow2.NumberFormat = "General"
+
+
+objExcel.ActiveWorkbook.SaveAs("d:\x\cr\AC Report Weekly (" & str & ").xls")
+objExcel.ActiveWorkbook.Close true
+objExcel.Application.Quit
+Set objExcel = Nothing
+
+set filesys = CreateObject ("Scripting.FileSystemObject")
+set demofile = filesys.GetFile("d:\x\MAC FROM JUL 7 TO JUL 13.xls")
+demofile.Delete
+
+
+
+msgbox "Done by ZHEN QIN @ " & FormatDateTime(Now,1) 
+msgbox "You are so great & Have a good day!"
