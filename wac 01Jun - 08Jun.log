@@ -1,0 +1,560 @@
+1    DM "Output; Clear; Log; Clear";
+2
+3    PROC IMPORT OUT= Schedule
+4                DATAFILE= "C:\Documents and Settings\Zhen.Qin\Desktop\ss.xls"
+5                DBMS=EXCEL REPLACE;
+6         RANGE="Sheet1$";
+7         GETNAMES=YES;
+8         MIXED=NO;
+9         SCANTEXT=YES;
+10        USEDATE=YES;
+11        SCANTIME=YES;
+12   RUN;
+
+NOTE: WORK.SCHEDULE data set was successfully created.
+NOTE: PROCEDURE IMPORT used (Total process time):
+      real time           6.75 seconds
+      cpu time            0.51 seconds
+
+
+13
+14   data date_select;
+15   set schedule;
+16   sd1=input(scan(new_user_period,1,'-'),anydtdte20.);
+17   sd2=input(scan(new_user_period,2,'-'),anydtdte20.);
+18   pd1=input(scan(new_user_period,1,'-'),anydtdte20.);
+19   pd2=input(scan(new_user_period,2,'-'),anydtdte20.);
+20   format sd1 sd2 date7. pd1 pd2 worddate12.;
+21   keep reporting_week data_from criteria sd1 sd2 pd1 pd2;
+22   run;
+
+NOTE: There were 10 observations read from the data set WORK.SCHEDULE.
+NOTE: The data set WORK.DATE_SELECT has 10 observations and 7 variables.
+NOTE: DATA statement used (Total process time):
+      real time           1.18 seconds
+      cpu time            0.04 seconds
+
+
+23
+24   proc sql noprint;
+25   select sd1 ,
+26          sd2 ,
+27          data_from,
+28          criteria,
+29          pd1 ,
+30          pd2 ,
+31          sd2
+32   into       : d1,
+33              : d2,
+34              : ds,
+35              : criteria,
+36              : dp1,
+37              : dp2,
+38              : ss_date
+39   from date_select
+40   where week(reporting_week)=week(date());
+41   quit;
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           0.29 seconds
+      cpu time            0.03 seconds
+
+
+42
+43   %put &d1;
+01JUN11
+44   %put &d2;
+08JUN11
+45   %put &ds;
+FC_PEN_WK_ADDR_SUBS
+46   %put &criteria;
+process_week='201123'
+47   %put &dp1;
+Jun 1, 2011
+48   %put &dp2;
+Jun 8, 2011
+49   %put &ss_date;
+08JUN11
+50
+51   %let s=',';
+52   %let pd1 = %scan("&dp1",1,"&s");
+53   %let pd2 = %scan("&dp2",1,"&s");
+54   %put &pd1;
+Jun 1
+55   %put &pd2;
+Jun 8
+56
+57   libname GCDM_D oracle user=ZQ832497
+58                         pw=XXXXXXXX
+59                         path=GCDM_D
+60                         SCHEMA=GCDM;
+NOTE: Libref GCDM_D was successfully assigned as follows:
+      Engine:        ORACLE
+      Physical Name: GCDM_D
+61   run;
+62
+63
+64   proc sql;
+65   create table week_&ss_date as
+66   select company_number||account_number as account,
+67          product_code as product,
+68          campaign_number as campaign,
+69          campaign_start_date as start,
+70          campaign_rate_end_date as end,
+71          year(datepart(campaign_rate_end_date)) as year,
+72          month(datepart(campaign_rate_end_date)) as month
+73   from gcdm_d.&ds(keep=product_code
+74                        campaign_number
+75                        campaign_start_date
+76                        campaign_rate_end_date
+77                        process_week
+78                        account_number
+79                        company_number)
+80   where campaign_number is not null
+81               and campaign_start_date is not null
+82                       and campaign_rate_end_date is not null
+83                               and campaign_rate_end_date >"&ss_date"D
+84                                       and  &criteria;
+NOTE: Table WORK.WEEK_08JUN11 created, with 6631403 rows and 7 columns.
+
+85   quit;
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           19:59.30
+      cpu time            32.82 seconds
+
+
+86   proc sql;
+87   create table d01 as
+88   select *
+89
+90   from week_&ss_date(drop=product )
+91   order by account, start, campaign;
+NOTE: Table WORK.D01 created, with 6631403 rows and 6 columns.
+
+92   quit;
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           19.01 seconds
+      cpu time            15.35 seconds
+
+
+93
+94   proc sort data=d01 out=d02 nodupkey;
+95   by account campaign ;
+96   run;
+
+NOTE: There were 6631403 observations read from the data set WORK.D01.
+NOTE: 5298179 observations with duplicate key values were deleted.
+NOTE: The data set WORK.D02 has 1333224 observations and 6 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           5.85 seconds
+      cpu time            6.93 seconds
+
+
+97
+98   data d03;
+99   set d02;
+100  by account campaign;
+101  if first.campaign and "&d1"d<=datepart(start)<="&d2"d then cata=1;
+102  cata2=1;
+103  run;
+
+NOTE: There were 1333224 observations read from the data set WORK.D02.
+NOTE: The data set WORK.D03 has 1333224 observations and 8 variables.
+NOTE: DATA statement used (Total process time):
+      real time           2.43 seconds
+      cpu time            1.26 seconds
+
+
+104
+105
+106
+107
+108
+109  libname M_owner oracle user=MARQUEE_Bi
+110                         pw=XXX
+111                         path=RBDW_P
+112                         SCHEMA=MARQUEE_OWNER;
+NOTE: Libref M_OWNER was successfully assigned as follows:
+      Engine:        ORACLE
+      Physical Name: RBDW_P
+113  run;
+114
+115  proc sort data=m_owner.discount_campaign(keep=discount_campaign
+116                                                campaign_expiry_date
+117                                                disc_camp_desc
+118                                                where=(discount_campaign is not missing and
+119                                                campaign_expiry_date is not missing)) out=d04;
+120  by discount_campaign descending campaign_expiry_date;
+121  run;
+
+NOTE: Sorting was performed by the data source.
+NOTE: There were 44717 observations read from the data set M_OWNER.DISCOUNT_CAMPAIGN.
+      WHERE (discount_campaign is not null) and (campaign_expiry_date is not null);
+NOTE: The data set WORK.D04 has 44717 observations and 3 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           1.29 seconds
+      cpu time            0.07 seconds
+
+
+122
+123  data d05;
+124  set d04;
+125  by discount_campaign ;
+126  if first.discount_campaign;
+127  run;
+
+NOTE: There were 44717 observations read from the data set WORK.D04.
+NOTE: The data set WORK.D05 has 8133 observations and 3 variables.
+NOTE: DATA statement used (Total process time):
+      real time           0.04 seconds
+      cpu time            0.01 seconds
+
+
+128
+129  proc sql;
+130  create table d06 as
+131  select a.*,
+132         compbl(b.disc_camp_desc) as description
+133  from d03 a inner join d05 b
+134  on  a.campaign=b.discount_campaign;
+NOTE: Table WORK.D06 created, with 1333224 rows and 9 columns.
+
+135  quit;
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           3.98 seconds
+      cpu time            1.59 seconds
+
+
+136
+137  proc format;
+138  value  cb   1 ='JAN'
+139              2 ='FEB'
+140              3 ='MAR'
+141              4 ='APR'
+142              5 ='MAY'
+143              6 ='JUN'
+144              7 ='JUL'
+145              8 ='AUG'
+146              9 ='SEP'
+147             10 ='OCT'
+148             11 ='NOV'
+149             12 ='DEC'
+150  ;
+NOTE: Format CB has been output.
+151  run;
+
+NOTE: PROCEDURE FORMAT used (Total process time):
+      real time           0.23 seconds
+      cpu time            0.01 seconds
+
+
+152
+153  /*ods listing close;*/
+154  /*ods html file="D:\X\17MAY2011 1.xls" style=minimal;*/
+155  /**/
+156  /**/
+157  /*proc tabulate data=d06 format=comma9.;*/
+158  /*class campaign discription year month;*/
+159  /*var cata cata2;*/
+160  /*format month cb. ;*/
+161  /*table (campaign*discription='DESCRIPTION'), (cata="NEW USERS"  cata2='TOTAL ACTIVE
+161! USERS')*sum=' ' (year=' '*month=' ')*n=' '*/
+162  /*/box=' ' misstext=' ';*/
+163  /*title1 "Weekly Active Campaigns -- Snapshot";*/
+164  /*title2 "Data collected from &date1 to &date2";*/
+165  /*run;*/
+166  /*ods _all_ close;*/
+167  /*ods listing;*/
+168  /**/
+169  proc template;
+170  define style Styles.ZQ02;
+171  parent = styles.Printer;
+172  replace fonts /
+173  'TitleFont2' = ("tahoma",9pt,Bold)
+174  'TitleFont' = ("tahoma",9pt,Bold)
+175  'StrongFont' = ("tahoma",8pt,Bold)
+176  'EmphasisFont' = ("tahoma",8pt, Bold)
+177  'FixedEmphasisFont' = ("tahoma",8pt)
+178  'FixedStrongFont' = ("tahoma",8pt,Bold)
+179  'FixedHeadingFont' = ("tahoma",8pt,Bold)
+180  'BatchFixedFont' = ("tahoma",8pt)
+181  'FixedFont' = ("tahoma",8pt)
+182  'headingEmphasisFont' = ("tahoma",8pt,Bold )
+183  'headingFont' = ("tahoma",8pt,Bold)
+184  'docFont' = ("tahoma",8pt);
+185  replace Systemtitle from TitlesAndFooters /
+186  just = L;
+187  replace GraphFonts /
+188  'GraphDataFont' = ("tahoma",8pt)
+189  'GraphValueFont' = ("tahoma",8pt)
+190  'GraphLabelFont' = ("tahoma",9pt,Bold)
+191  'GraphFootnoteFont' = ("tahoma",9pt,Bold)
+192  'GraphTitleFont' = ("tahoma",9pt,Bold);
+193  replace color_list /
+194  'link' = blue
+195  'bgH' = white
+196  'fg' = black
+197  'bg' = _undef_;
+198  replace Table from Output /
+199  background = _undef_
+200  frame = HSIDES
+201  vjust = M
+202  cellpadding = 4pt
+203  cellspacing = 0.75pt
+204  borderwidth = 0.75pt;
+205  replace SystemFooter from TitlesAndFooters /
+206  just = L
+207  font = fonts('docFont');
+208  end;
+NOTE: Overwriting existing template/link: Styles.Zq02
+NOTE: STYLE 'Styles.Zq02' has been saved to: SASUSER.TEMPLAT
+209  run;
+NOTE: PROCEDURE TEMPLATE used (Total process time):
+      real time           0.70 seconds
+      cpu time            0.01 seconds
+
+
+210
+211
+212  /*ods listing close;*/
+213  /*ods msoffice2k file="D:\X\17MAY2011 1.xls" style=minimal;*/
+214  /**/
+215  /**/
+216  /*proc tabulate data=d06 format=comma9.;*/
+217  /*class campaign discription year month;*/
+218  /*var cata cata2;*/
+219  /*format month cb. ;*/
+220  /*table (campaign="CAMPAIGN"*discription ="DESCRIPTION"), (cata="NEW USERS"  cata2='TOTAL ACTIVE
+220! USERS')*sum=' ' (year=' '*month=' ')*n=' '*/
+221  /*/box=' ' misstext=' ';*/
+222  /*title1 "Weekly Active Campaigns -- Snapshot";*/
+223  /*title2 "Data collected from &date1 to &date2";*/
+224  /*run;*/
+225  /*ods _all_ close;*/
+226  /*ods listing;*/
+227
+228  /*ods listing close;*/
+229  /*ods msoffice2k file="d:\x\24May2011_test 1.xls" style=styles.ZQ01;*/
+230  /*title1 "WEEKLY ACTIVE CAMPAIGN -- SNAPSHOT DATE &ss_date";*/
+231  /*title2 "NEW USERS DATE RANGE - &st_date -&ss_date";*/
+232  /*title3;*/
+233  /*title4 "   ";*/
+234  /**/
+235  /*proc tabulate data=d06 format=comma9.;*/
+236  /*class campaign description year month;*/
+237  /*var cata cata2;*/
+238  /*format month cb.;*/
+239  /*table (campaign="CAMPAIGN"*description="DESCRIPTION" ),*/
+240  /*           (cata="NEW USERS   &d1 -&d2 " cata2="TOTAL ACTIVE USERS     CAMPAIGN END DATE >
+240! &d2")*sum=' ' */
+241  /*              (year=' '*month=' ')*n=' '*/
+242  /*/box=' ' misstext=' ';*/
+243  /*run;*/
+244  /*ods msoffice2k close;*/
+245  /*ods listing;*/
+246
+247
+248
+249
+250
+251
+252
+253
+254  ******************************************************************************************
+255  ******************************************************************************************;
+256
+257  proc sql;
+258  create table d07 as
+259  select *
+260  from week_&ss_date
+261  order by account, start, product,campaign;
+NOTE: Table WORK.D07 created, with 6631403 rows and 7 columns.
+
+262  quit;
+NOTE: PROCEDURE SQL used (Total process time):
+      real time           23.06 seconds
+      cpu time            16.06 seconds
+
+
+263
+264  proc sort data=d07 out=d08 nodupkey;
+265  by account product campaign;
+266  run;
+
+NOTE: There were 6631403 observations read from the data set WORK.D07.
+NOTE: 1158563 observations with duplicate key values were deleted.
+NOTE: The data set WORK.D08 has 5472840 observations and 7 variables.
+NOTE: PROCEDURE SORT used (Total process time):
+      real time           22.09 seconds
+      cpu time            11.79 seconds
+
+
+267
+268  /*proc sql;*/
+269  /*create table d01 as*/
+270  /*select *,*/
+271  /*      week(start) as start_week,*/
+272  /*    year(start) as start_year,*/
+273  /*    week("&begin_2w"d) as curr_week,*/
+274  /*    year("&begin_2w"d) as curr_year*/
+275  /*from week_m_&wk_1(drop=product )*/
+276  /*order by account, start, campaign;*/
+277  /*quit;*/
+278
+279  /*proc sql noprint;*/
+280  /*select count(distinct account) into: num_d02_acc*/
+281  /*from d10May201102;*/
+282  /*quit;*/
+283  /**/
+284  /*proc sql noprint;*/
+285  /*select count(*) into: num_d02_obs*/
+286  /*from d10May201102;*/
+287  /*quit;*/
+288  /**/
+289  /*%put &num_d02_acc;*/
+290  /*%put &num_d02_obs;*/
+291
+292  data d09;
+293  set d08;
+294  by account product campaign;
+295  if first.campaign and "&d1"d<=datepart(start)<="&d2"d then cata=1;
+296  cata2=1;
+297  run;
+
+NOTE: There were 5472840 observations read from the data set WORK.D08.
+NOTE: The data set WORK.D09 has 5472840 observations and 9 variables.
+NOTE: DATA statement used (Total process time):
+      real time           11.65 seconds
+      cpu time            6.00 seconds
+
+
+298
+299
+300
+301
+302  options nocenter;
+303  ods listing close;
+304  ods tagsets.excelxp file="d:\x\MAC FROM %sysfunc(strip(&pd1)) TO %sysfunc(strip(&pd2)).xls"
+304! style=styles.zq02
+305
+306  /*ods tagsets.excelxp file="d:\x\testing_wac_24May2011 1.xls" style=styles.zq02*/
+307  options(orientation='landscape'
+308          Absolute_Column_Width="9,54,14,23,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4
+309                                           ,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4
+310                                           ,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4"
+311          embedded_titles='yes'
+312          center_vertical='yes'
+313          row_repeat='1-8'
+314          autofilter='1-2'
+315          );
+WARNING: Could not locate style reference 'ZQ02.GraphFonts("GraphUnicodeFont")'.
+WARNING: Could not locate style reference 'ZQ02.GraphFonts("GraphAnnoFont")'.
+NOTE: Writing TAGSETS.EXCELXP Body file: d:\x\MAC FROM Jun 1 TO Jun 8.xls
+NOTE: This is the Excel XP tagset (Compatible with SAS 9.1.3 and above, v1.122, 01/04/2011). Add
+options(doc='help') to the ods statement for more information.
+316  ods tagsets.excelxp options(sheet_name='WAC BY CAMPAIGN');
+317  title1 "WEEKLY ACTIVE CAMPAIGN -- SNAPSHOT DATE @%sysfunc(strip(&dp2))";
+318  title2 "   ";
+319  title3;
+320  title4 "   ";
+321  proc tabulate data=d06 style=[tagattr='format:#,##0']missing;
+322  class campaign description year month / style=[vjust=center];
+323  var cata cata2;
+324  format month cb.;
+325  table (campaign="CAMPAIGN"*description="DESCRIPTION" ),
+326              (cata="NEW USERS        (%sysfunc(strip(&pd1))- %sysfunc(strip(&pd2))) "
+327                      cata2="TOTAL ACTIVE USERS CAMPAIGN END DATE >%sysfunc(strip(&pd2)) ")*sum=' '
+328                      (year=' '*month=' ')*n=' '
+329  /box=' ' misstext=' ';
+330  run;
+
+NOTE: There were 1333224 observations read from the data set WORK.D06.
+NOTE: PROCEDURE TABULATE used (Total process time):
+      real time           25.57 seconds
+      cpu time            25.20 seconds
+
+
+331
+332
+333
+334
+335
+336
+337  ods tagsets.excelxp options (Absolute_Column_Width=' '
+338                               orientation='landscape'
+339                               embedded_titles='yes'
+340                               center_vertical='yes'
+341                               autofilter='1-2'
+342                               sheet_name='WAC COMPAIGN BY PRODUCT'
+343                               frozen_headers='yes'
+344
+345       );
+346  title1 "WEEKLY ACTIVE CAMPAIGN -- SNAPSHOT DATE @%sysfunc(strip(&dp2))";
+347  title2 "   ";
+348  title3;
+349  title4 "   ";
+350  options missing=' ';
+351  ods escapechar='*';
+352  proc report data=d09 nowd split='*'  nocompletecols style(header)=[vjust=MIDDLE];
+353  column product ("PRODUCT" (prod1))
+354                 ("CAMPAIGN" (campaign))
+355                 ("NEW USERS *(%sysfunc(strip(&pd1))- %sysfunc(strip(&pd2)))" (cata))
+356                 ("TOTAL ACTIVE USERS*CAMPAIGN END DATE >%sysfunc(strip(&pd2)) " (cata2))
+357                  year, (month, n);
+358  define product / group noprint;
+359  define prod1 / computed width=8  '   ' left style(header)=[vjust=MIDDLE];
+360  define campaign / group '   ' width=10 ;
+361  define cata / sum "     "   STYLE(column)={TAGATTR='format:#,##'} width=18 flow;
+362  define cata2 / sum "     " STYLE(column)={TAGATTR='format:#,##'} width=24 flow;
+363  define year / across '  ';
+364  define month / across ' ' width=3 format=cb. order=internal ;
+365  define n/' ' STYLE(column)={TAGATTR='format:#,##'} width=4;
+366
+367  compute prod1 / char;
+368  if product ne ' ' then hold=product;
+369  prod1=hold;
+370  endcomp;
+371
+372  /*compute before _page_ /left;*/
+373  /*/*line '*S={foot_weight=bold} this is a compute';*/*/
+374  /*line "*S={font_weight=bold}WEEKLY ACTIVE CAMPAIGN -- SNAPSHOT DATE @%sysfunc(strip(&ss_date))";
+374!  */
+375  /*line '   ';*/
+376  /*line '   ';*/
+377  /*endcomp;*/;
+378
+379  run;
+
+NOTE: There were 5472840 observations read from the data set WORK.D09.
+NOTE: PROCEDURE REPORT used (Total process time):
+      real time           6:09.76
+      cpu time            6:12.34
+
+
+380  ods _all_ close;
+381  ods listing;
+382  title;
+383  footnote;
+384
+385
+386
+387  proc datasets lib=work nolist;
+388  delete D:;
+389  quit;
+
+NOTE: Deleting WORK.D01 (memtype=DATA).
+NOTE: Deleting WORK.D02 (memtype=DATA).
+NOTE: Deleting WORK.D03 (memtype=DATA).
+NOTE: Deleting WORK.D04 (memtype=DATA).
+NOTE: Deleting WORK.D05 (memtype=DATA).
+NOTE: Deleting WORK.D06 (memtype=DATA).
+NOTE: Deleting WORK.D07 (memtype=DATA).
+NOTE: Deleting WORK.D08 (memtype=DATA).
+NOTE: Deleting WORK.D09 (memtype=DATA).
+NOTE: Deleting WORK.DATE_SELECT (memtype=DATA).
+NOTE: PROCEDURE DATASETS used (Total process time):
+      real time           0.50 seconds
+      cpu time            0.09 seconds
+
+
+390  run;
+
